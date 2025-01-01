@@ -1,0 +1,25 @@
+# for this to work you must configure sudo such that it will be able to run the command without password
+# echo "$(whoami) ALL=(root) NOPASSWD: sha256:$(shasum -a 256 $(which yabai) | cut -d " " -f 1) $(which yabai) --load-sa" | sudo tee /private/etc/sudoers.d/yabai
+yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
+sudo yabai --load-sa
+
+#yabai -m config layout bsp
+#yabai -m config window_placement second_child
+yabai -m config mouse_follows_focus on
+
+# padding
+#yabai -m config top_padding 1
+#yabai -m config left_padding 1
+#yabai -m config right_padding 1
+#yabai -m config bottom_padding 1
+#yabai -m config window_gap 1
+
+# window opacity 
+#yabai -m config window_opacity on
+#yabai -m config active_window_opacity 1.0
+#yabai -m config normal_window_opacity 0.5
+
+# disable apps
+#yabai -m rule --add app="^System Settings$" manage=off
+#yabai -m rule --add app="^HHKB Studio Tool$" manage=off
+

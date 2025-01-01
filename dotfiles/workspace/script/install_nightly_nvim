@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+trap exit ERR
+
+SRC_FILE="$HOME/Downloads/nvim-macos-arm64.tar.gz"
+DEST_DIR="$HOME/.local/share/nvim_nightly"
+COLORED=false
+
+usage() {
+cat << EOF
+Install nightly nvim outside the confines of nix/homebrew (only on macOS)
+
+Usage: install_nightly_nvim [option...] 
+
+Options:
+    -h, --help:                                 show this message and exit
+    -c, --colored:                              enable colored output
+    -d <dest-dir>, --dest-dir=<dest-dir>:       the install destination directory (default: $DEST_DIR)
+
+EOF
+}
+
+parse_args() {
+    eval set -- "$(getopt -o -h,-c,-d: --long help,colored,dest-dir: -- "$@")"
+
+    while true; do
+        case ${1-} in
+            -h|--help)
+                usage
+                exit
+                ;;
+            -c|--colored)
+                COLORED=true
+                shift;
+                ;;
+            -d|--dest-dir)
+    		    DEST_DIR=$(realpath "$2")
+                shift 2;
+                ;;
+            --)
+                shift; 
+                break 
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+}
+
+is_color_supported() {
+    # check color enabled and if stdout is a terminal
+    if [[ $COLORED == true && -t 1 ]]; then
+        case "$TERM" in
+            xterm*|screen*|vt100*|linux|ansi|rxvt*|color|*-256color)
+                return 0  
+                ;;
+        esac
+    fi
+    return 1  
+}
+
+green() {
+    local line=${1-}
+    local green='\033[32m'
+    local reset='\033[0m'
+    echo -e "${green}${line}${reset}"
+}
+
+# this script runs in nix env which doesn't contain xattr command
+# macOS xattr not usable in nix build env and nix pkg darwin.xattr collides with gnu coreutils pkg
+# thus using go
+clear_file_attrs() {
+    local cfa_dir=/tmp/clear_file_attrs 
+    local cfa_file=$cfa_dir/clear_file_attrs.go
+
+    mkdir -p "$cfa_dir" 
+    cd "$cfa_dir"
+    rm -f go.mod
+    go mod init clear_file_attrs
+    go get github.com/pkg/xattr
+
+    cat << EOF > $cfa_file
+package main
+
+import (
+    "fmt"
+    "log"
+    "github.com/pkg/xattr"
+    "os"
+)
+
+func main() {
+    if len(os.Args) < 2 {
+        log.Fatal("file arg is required, e.g. /foo/bar.txt")
+    }
+    file := os.Args[1]
+
+    attrs, err := xattr.List(file)
+    if err != nil {
+        log.Fatalf("Error listing attributes: %v\n", err)
+    }
+
+    for _, attr := range attrs {
+        err := xattr.Remove(file, attr)
+        if err != nil {
+            log.Printf("Error removing attribute %s: %v\n", attr, err)
+        } else {
+            fmt.Printf("Cleared attribute: %s\n", attr)
+        }
+    }
+}
+EOF
+
+    go run "$cfa_file" "$SRC_FILE" &> /dev/null
+    cd - &> /dev/null
+}
+
+is_file_mtime_today() {
+    if [[ ! -e $SRC_FILE ]]; then
+        echo "file $SRC_FILE does not exist" >&2
+        return 1
+    fi
+    local file_date=$(date -r "$SRC_FILE" +"%Y-%m-%d")
+    local today_date=$(date +"%Y-%m-%d")
+    if [[ "$file_date" == "$today_date" ]] then
+        return 0
+    else
+        return 1
+    fi
+}
+
+run() {
+    if is_file_mtime_today; then
+        echo "installing nothing since file $SRC_FILE mtime is today"
+        return
+    fi
+    echo "installing $SRC_FILE to $DEST_DIR..."
+
+    local url='https://github.com/neovim/neovim/releases/download/nightly/nvim-macos-arm64.tar.gz'
+
+    local src_dir
+    src_dir=$(dirname "$SRC_FILE")
+
+    local src_filename
+    src_filename=$(basename "$SRC_FILE")
+
+    local src_filename_no_ext
+    src_filename_no_ext="${src_filename%%.*}"
+
+    mkdir -p "$src_dir"
+    mkdir -p "$DEST_DIR"
+
+    rm -rf "${DEST_DIR:?}"/* 
+    rm -rf "${src_dir}/${src_filename_no_ext}"* 
+
+    echo "downloading $url to $SRC_FILE..."
+    curl -s -L "$url" -o "$SRC_FILE"
+    echo "downloading $url to $SRC_FILE...done"
+
+    echo "clearing file attrs for $SRC_FILE..." >&2
+    clear_file_attrs "$SRC_FILE"
+    echo "clearing file attrs for $SRC_FILE...done" >&2
+
+    cd "$src_dir"
+    tar xzf "$SRC_FILE"
+    mv "$src_filename_no_ext"/* "$DEST_DIR"
+    cd - &> /dev/null
+    echo "installing $SRC_FILE to $DEST_DIR...done"
+}
+
+main() {
+    parse_args "$@"
+
+    local os
+    os=$(uname)
+    if [[ $os != Darwin ]]; then
+        echo "expected Darwin OS but found $os" >&2
+        exit 1
+    fi
+
+    local bname
+    bname=$(basename "$0")
+
+    if is_color_supported; then
+        run 2>&1 | sed "s/^/$(green "$bname"): /"
+    else
+        run 2>&1 | sed "s/^/"$bname": /"
+    fi
+}
+
+main "$@" 
+

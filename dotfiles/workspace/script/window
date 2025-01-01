@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+
+set -Eeuxo pipefail
+trap exit ERR
+
+# some apps don't follow expected behavior
+SPECIAL_APPS=(
+    'FaceTime'
+    'Photo Booth'
+    'System Settings'
+)
+
+usage() {
+cat << EOF
+Usage: window [option]... <command>
+
+Move a window
+
+Options:
+    -h, --help:     show help
+
+Commands:
+    help:           show help
+    center:         center
+    fullscreen:     toggle fullscreen if capable else center
+    left:           left
+    right:          right
+    maximize:       maximize if capable else center
+EOF
+}
+
+check_args() {
+    # check help
+    eval set -- "$(getopt -o -h --long help -- "$@")"
+    while true; do
+        case ${1-} in
+            -h|--help)
+                usage
+                exit
+                ;;
+            --) 
+                shift; 
+                break 
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    # check command
+    if [[ $# -eq 0 ]]; then
+        usage >&2
+        exit 2
+    fi
+
+    local cmd
+    local cmds
+    local cmd_located=false
+    cmds=$(usage | sed -n '/Commands:/,$p' | sed '1d' | awk -F: '{print $1}' | sed 's/^[[:space:]]*//')
+    for cmd in $cmds; do
+        if [[ "$cmd" == "$1" ]]; then
+            cmd_located=true
+            break
+        fi
+    done
+    if [[ $cmd_located == false ]]; then
+        usage >&2
+        exit 2
+    fi
+    if [[ $cmd == help ]]; then
+        usage
+        exit
+    fi
+}
+
+# only call this in an if or disable set -e
+is_special_app() {
+    local app
+    local it
+
+    app="$(yabai -m query --windows --window | jq -r '.app')"
+    for it in "${SPECIAL_APPS[@]}"; do
+        if [[ "$it" == "$app" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+center_special_app() {
+    local window
+    local display
+    local coords
+
+    window=$(yabai -m query --windows --window) 
+    display="$(yabai -m query --displays --window)"
+    coords="$(jq \
+        --argjson window "$window" \
+        --argjson display "$display" \
+        -nr '(($display.frame | .x + .w / 2) - ($window.frame.w / 2) | tostring)
+          + ":"
+          + (($display.frame | .y + .h / 2) - ($window.frame.h / 2) | tostring)')"
+
+    yabai -m window --move "abs:$coords"
+}
+
+maximize_special_app() {
+    local height
+    height=$(yabai -m query --windows --window | jq -r '.frame.h' | cut -d '.' -f 1)
+
+    # TODO should handle other screens
+    # in macOS, even though my screen is 4k, it represents it as 1920x1080
+    # seems like the vertical size of toolbars on window/screen is about 25 pixels hence 1055 window height
+    # doing the check because doing the maximize then center causes screen shift so only need to do it once
+    if (( height < 1055 )); then
+        yabai -m window --grid 1:1:0:0:1:1
+    fi
+
+    center_special_app
+}
+
+center() {
+    if is_special_app; then
+        center_special_app
+    else
+        yabai -m window --grid 6:4:1:1:2:4
+    fi
+
+}
+
+fullscreen() {
+    if is_special_app; then
+        maximize_special_app
+    else
+        yabai -m window --toggle native-fullscreen
+    fi
+}
+
+left() {
+    yabai -m window --grid 1:2:0:0:1:1
+}
+
+right() {
+    yabai -m window --grid 1:2:1:0:1:1
+}
+
+maximize() {
+    if is_special_app; then
+        maximize_special_app
+    else
+        yabai -m window --grid 1:1:0:0:1:1
+    fi
+}
+
+main() {
+    check_args "$@"
+    "$@"
+}
+
+main "$@" &>> $HOME/workspace/tmp/window.log
+

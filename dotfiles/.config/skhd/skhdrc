@@ -1,0 +1,48 @@
+# fullscreen
+f11 [
+    "UTM" ~
+    * : ~/workspace/script/window fullscreen
+]
+
+# maximize
+ctrl + shift - up [
+    "UTM" ~
+    * : ~/workspace/script/window maximize
+]
+
+# left half
+ctrl + shift - left [
+    "UTM" ~
+    * : ~/workspace/script/window left
+] 
+
+# right half
+ctrl + shift - right [
+    "UTM" ~
+    * : ~/workspace/script/window right
+] 
+
+# center
+ctrl + shift - down [
+    "UTM" ~
+    * : ~/workspace/script/window center
+]
+
+# open apps
+#ctrl + alt - e [ 
+#    "UTM" ~
+#    * : open -a 'IntelliJ IDEA Community Edition.app'           # editor
+#]
+ctrl + alt - f [
+    "UTM" ~
+    * : open ~                                                  # file browser
+]
+#ctrl + alt - t [
+#    "UTM" ~
+#    * : open -a ghostty                                         # terminal
+#]
+#ctrl + alt - w [
+#    "UTM" ~
+#    * : open -a 'Google Chrome'                                 # web browser
+#]
+

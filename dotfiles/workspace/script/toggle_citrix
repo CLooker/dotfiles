@@ -1,0 +1,18 @@
+#!/usr/bin/env osascript
+
+tell application "System Events"
+    set activatedApp to name of the first application process whose frontmost is true
+    set citrixApp to "Citrix Viewer"
+    set citrixAppActivated to activatedApp is citrixApp
+    set citrixAppRunning to (count of (every process whose name is citrixApp)) > 0
+
+    if citrixAppActivated or not citrixAppRunning then
+        keystroke tab using command down
+    else
+        -- can't use citrixApp var here
+        tell application "Citrix Viewer" to activate
+        delay 0.1
+        key code 53
+    end if
+end tell
+

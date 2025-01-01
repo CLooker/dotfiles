@@ -1,0 +1,264 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+trap exit ERR
+
+CODE_DIR=~/code
+MODE=
+MODES=(home-manager nix-darwin)
+OS=$(uname)
+OSES=(Darwin Linux)
+
+usage() {
+cat << EOF
+Manage my dotfiles
+
+Usage: dotfiles [option...] <command>
+
+Options:
+    -h, --help:                     show this message and exit
+    -m <mode>, --mode=<mode>:       home-manager | nix-darwin
+
+Commands:
+    help:           show this message and exit
+    activate:       activate dotfiles latest commit on local machine
+    commit:         commit dotfiles to git
+    init:           init dotfiles by installing packages, cloning git repo, and activating dotfiles
+    push:           push dotfiles to git
+    sync:           sync dotfiles by committing and then activating
+    syncp:          sync dotfiles by running sync and handling password usage
+    uninstall:      uninstall
+EOF
+}
+
+check_args() {
+    eval set -- "$(getopt -o -h,-m: --long help,mode: -- "$@")"
+
+    while true; do
+      case ${1-} in
+        -h|--help)
+            usage
+            exit
+            ;;
+        -m|--mode)
+            MODE="$2"
+            shift 2
+            ;;
+        --) 
+            shift; 
+            break 
+            ;;
+        *)
+            break
+            ;;
+      esac
+    done
+
+    # check arg passed
+    if [[ $# -eq 0 ]]; then
+        usage >&2
+        exit 2
+    fi
+    
+    # check command
+    local cmd
+    local cmds
+    local cmd_located=false
+    cmds=$(usage | sed -n '/Commands:/,$p' | sed '1d' | awk -F: '{print $1}' | sed 's/^[[:space:]]*//')
+    for cmd in $cmds; do
+        if [[ "$cmd" == "$1" ]]; then
+            cmd_located=true
+            break
+        fi
+    done
+    if [[ $cmd_located == false ]]; then
+        usage >&2
+        exit 2
+    fi
+    if [[ $cmd == help ]]; then
+        usage
+        exit
+    fi
+
+    # check OS
+    local osValidated=false
+    local it
+    for it in "${OSES[@]}"; do
+        if [[ "$it" == "$OS" ]]; then
+            osValidated=true
+            break
+        fi
+    done
+    if [[ $osValidated == false ]]; then
+        echo "failed handling OS $OS due to expected one of ${OSES[*]}" >&2
+        exit 2
+    fi
+
+    # check mode
+    if [[ -z ${MODE-} ]]; then
+        if [[ $OS == Darwin ]]; then
+            MODE=nix-darwin
+        elif [[ $OS == Linux ]]; then
+            MODE=home-manager
+        else
+            MODE=none
+        fi
+    fi
+    local modeValidated=false
+    local it
+    for it in "${MODES[@]}"; do
+        if [[ "$it" == "$MODE" ]]; then
+            modeValidated=true
+            break
+        fi
+    done
+    if [[  $modeValidated == false ]]; then
+        usage >&2
+        exit 2
+    fi
+}
+
+init__install_git_ssh_keys() {
+    echo 'installing git ssh keys...' >&2
+    local private_key_file=~/.ssh/id_rsa
+    local public_key_file=$private_key_file.pub
+    if [[ ! -e $private_key_file ]]; then
+        ssh-keygen -t ed25519 -C "Chad.Looker@gmail.com" -N '' -f $private_key_file
+        ssh-add $private_key_file
+        echo "manually add the following public key to github"
+        cat $public_key_file
+        read -r -p "press enter when done"
+    fi
+    echo 'installing git ssh keys...done' >&2
+}
+
+init__install_packages() {
+    echo 'installing packages...' >&2
+    if [[ $OS == Darwin ]]; then
+        if ! xcode-select -p &>/dev/null; then
+            xcode-select --init
+        fi
+        if ! brew --version &>/dev/null; then
+            /bin/bash -c 'curl -fsSL https://raw.githubusercontent.com/Homebrew/init/HEAD/init.sh'
+            echo 'installing packages...homebrew installed but running script again is required...done' >&1
+            exit 1
+        fi
+        brew upgrade && brew init bash --force
+    elif [[ $OS == Linux ]]; then
+        # minimal packages for this script plus ui apps that nix doesn't manage well in linux
+        pkgs=(
+            anki
+            curl
+            git
+            chromium-browser
+            guvcview
+        )
+        sudo apt init -y "${pkgs[@]}"
+    fi
+    echo 'installing packages...done' >&2
+}
+
+init__install_dotfiles_repo() {
+    echo 'installing dotfiles repo...' >&2
+    mkdir -p "$CODE_DIR"
+    cd "$CODE_DIR"
+    if [[ ! -e dotfiles ]]; then
+        git clone git@github.com:CLooker/dotfiles.git
+    fi
+    echo 'installing dotfiles repo...done' >&2
+}
+
+init__install_mode() {
+    echo "installing $MODE..." >&2
+    sudo rm -rf /etc/*backup-before-nix* || true
+    sh <(curl -L https://nixos.org/nix/init)
+    if [[ $OS == Darwin ]]; then
+        . /nix/var/nix/profiles/default/etc/profile.d/nix.sh
+    elif [[ $OS == Linux ]]; then
+        # shellcheck source=/dev/null
+        . ~/.nix-profile/etc/profile.d/nix.sh
+    else
+        echo "failed installing $MODE due to unhandled OS $OS" >&2
+    fi
+    if [[ $MODE == home-manager ]]; then
+    	sudo rm -rf ~/.bashrc || true
+        nix-channel --add https://github.com/nix-community/home-manager/archive/master.tar.gz home-manager
+        nix-channel --update
+        nix-shell '<home-manager>' -A init
+        cd ~/.config
+        rm -rf home-manager || true
+        mkdir home-manager
+        ln -s ~/code/dotfiles/nix/home.nix home-manager/home.nix
+        home-manager switch
+    elif [[ $MODE == nix-darwin ]]; then
+        nix run nix-darwin -- switch --flake "$CODE_DIR"/dotfiles/nix
+    fi
+    echo "installing $MODE...succeeded...restart shell or reboot to definitely see all changes...done" >&2
+}
+
+activate() {
+    if [[ $MODE == home-manager ]]; then
+        home-manager switch
+    elif [[ $MODE == nix-darwin ]]; then
+        sudo darwin-rebuild \
+            switch \
+            --flake ~/code/dotfiles/nix \
+            && launchctl stop org.nixos.skhd \
+            && launchctl start org.nixos.skhd
+    fi
+}
+
+commit() {
+    cd "$CODE_DIR"/dotfiles
+    git add .
+    git commit "$@"
+}
+
+init() {
+    init__install_git_ssh_keys
+    init__install_packages
+    init__install_dotfiles_repo
+    init__install_mode
+}
+
+push() {
+    cd "$CODE_DIR"/dotfiles
+    git push --force-with-lease
+}
+
+sync() {
+    commit --amend --no-edit
+    activate
+}
+
+syncp() {
+    if [[ -z "${PASSWD_FILE-}" || ! -f "${PASSWD_FILE-}" ]]; then
+        echo "PASSWD_FILE env var is required and it must be a file"
+        return 1
+    fi
+
+    local passwd
+    passwd=$(<"$PASSWD_FILE")
+
+expect <<EOF
+spawn bash -c "dotfiles sync"
+while {1} {
+    expect {
+        "Password:" {
+            send "$passwd\r"
+        }
+        eof {
+            break
+        }
+    }
+}
+EOF
+}
+
+main() {
+    check_args "$@"
+    "$@"
+}
+
+main "$@"
+
