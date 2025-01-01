@@ -1,0 +1,20 @@
+# https://ghostty.org/docs/config/reference
+
+clipboard-paste-protection = false
+clipboard-trim-trailing-spaces
+clipboard-write = allow
+copy-on-select = clipboard
+#cursor-style = bar
+#cursor-style-blink = true
+font-feature = -calt
+font-feature = -dlig
+font-feature = -liga
+macos-titlebar-proxy-icon = hidden
+shell-integration-features = no-cursor
+theme = Dark Modern
+#theme = Apple System Colors
+title = " "
+
+keybind = ctrl+insert=copy_to_clipboard
+keybind = shift+insert=paste_from_clipboard
+

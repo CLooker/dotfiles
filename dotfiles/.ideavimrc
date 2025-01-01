@@ -1,0 +1,71 @@
+" commands: https://jb.gg/h38q75
+" actions: https://jb.gg/abva4t
+" plugin: https://jb.gg/ideavim-plugins
+" ideavimrc examples: https://jb.gg/share-ideavimrc
+
+Plug 'machakann/vim-highlightedyank'
+Plug 'preservim/nerdtree'
+Plug 'tpope/vim-commentary'
+
+set clipboard+=unnamedplus
+set scrolloff=5
+set timeoutlen=300
+
+set ideajoin
+set incsearch
+set number relativenumber
+"set trackactionids
+
+let mapleader = " "
+
+" .ideavimrc
+nnoremap <leader>oi :e ~/.ideavimrc<CR>
+nnoremap <leader>si :so ~/.ideavimrc<CR>
+
+" code
+nmap g= <Action>(OptimizeImports)<Action>(ReformatCode)
+nmap gr <Action>(Debug)<Action>(Debug)
+nnoremap ga :action ShowIntentionActions<CR>
+nnoremap gn :action RenameElement<CR>
+nnoremap ge :action GotoNextError<CR>
+nnoremap gE :action GotoPrevError<CR>
+nnoremap <S-k> :action QuickJavaDoc<CR>
+inoremap <C-S-k> :action QuickJavaDoc<CR>
+
+" explorer
+nnoremap <Esc> :action SelectInProjectView<CR>
+
+" find/replace
+nnoremap <leader>fh :action Find<CR>
+nnoremap <leader>fe :action FindInPath<CR>
+nnoremap <leader>ff :action GotoFile<CR>
+nnoremap <leader>rh :action Replace<CR>
+nnoremap <leader>re :action ReplaceInPath<CR>
+
+" git
+nnoremap <leader>gw :action ActivateVersionControlToolWindow<CR>
+nnoremap <leader>gc :action CheckinProject<CR>
+nnoremap <leader>gl :action Vcs.Show.Log<CR>
+
+" jumplist
+nmap <C-o> <Action>(Back)
+nmap <C-i> <Action>(Forward)
+
+" move down/up
+nnoremap <C-d><C-d>zz<CR>
+nnoremap <C-u><C-u>zz<CR>
+
+" put w/o changing register with deleted content
+nnoremap <leader>p \"_dP<CR>
+
+" window 
+nnoremap <C-h> <C-w>h<CR>
+nnoremap <C-l> <C-w>l<CR> 
+nnoremap <C-o> <C-w>o<CR> 
+nnoremap <C-p> <C-w>w<CR>
+nnoremap <C-s> <C-w>v<CR> 
+nnoremap <C-q> :action CloseAllUnpinnedEditors<CR> 
+
+" terminal
+nnoremap <leader>t :action ActivateTerminalToolWindow<CR>
+

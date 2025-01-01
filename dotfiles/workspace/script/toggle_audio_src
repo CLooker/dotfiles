@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+trap exit ERR
+
+export PATH=/run/current-system/sw/bin:$PATH
+
+usage() {
+cat << EOF
+Toggle audio source between my speakers and my headphones
+
+Usage: toggle_audio_src [option...]
+
+Options:
+    -h, --help:     show this message and exit
+
+EOF
+}
+
+check_args() {
+    eval set -- "$(getopt -o -h --long help -- "$@")"
+
+    while true; do
+        case ${1-} in
+            -h|--help)
+                usage
+                exit
+                ;;
+            --) 
+                shift; 
+                break 
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+}
+
+run() {
+    local speaker_name="Mac mini Speakers"
+    local available_outputs
+    local external_output_name
+    local activated_name
+
+    available_outputs="$(
+        SwitchAudioSource -a -t output -f human
+    )"
+
+    external_output_name="$(
+        printf '%s\n' "$available_outputs" \
+            | grep -Ei 'Plantronics|External Headphones' \
+            | head -n 1 \
+            || true
+    )"
+
+    if [[ -z "$external_output_name" ]]; then
+        external_output_name="$(
+            printf '%s\n' "$available_outputs" \
+                | grep -Ev '^(Mac mini Speakers|Microsoft Teams Audio)$' \
+                | head -n 1 \
+                || true
+        )"
+    fi
+
+    if [[ -z "$external_output_name" ]]; then
+        echo "no non-speaker audio output found"
+        return 1
+    fi
+
+    activated_name=$(SwitchAudioSource -c)
+
+    if [[ "$activated_name" == "$external_output_name" ]]; then
+        SwitchAudioSource -s "$speaker_name"
+    else
+        SwitchAudioSource -s "$external_output_name"
+    fi
+}
+
+main() {
+    check_args "$@"
+    run 2>&1 | sed "s/^/$(basename "$0"): /"
+}
+
+mkdir -p "$HOME/workspace/tmp"
+main "$@" 2>&1 | tee "$HOME/workspace/tmp/toggle_audio_src.log"

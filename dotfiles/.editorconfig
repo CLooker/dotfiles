@@ -1,0 +1,11 @@
+root = true
+
+[*]
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_line = true
+max_line_length = 120
+
+[*.{lua,nix,yaml,yml}]
+indent_size = 2
