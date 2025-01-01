@@ -1,0 +1,40 @@
+# move windows
+f11 [
+    "UTM" ~
+    * : yabai -m window --toggle native-fullscreen              # fullscreen
+]
+cmd - up [
+    "UTM" ~
+    * : yabai -m window --grid 1:1:0:0:1:1                      # maximize
+]
+cmd - left [
+    "UTM" ~
+    * : yabai -m window --grid 1:2:0:0:1:1                      # left half
+] 
+cmd - right [
+    "UTM" ~
+    * : yabai -m window --grid 1:2:1:0:1:1                      # left half
+] 
+cmd - down [
+    "UTM" ~
+    * : yabai -m window --grid 6:4:1:1:2:4
+]
+
+# open apps
+ctrl + alt - e [ 
+    "UTM" ~
+    * : open -a 'IntelliJ IDEA Community Edition.app'           # editor
+]
+ctrl + alt - f [
+    "UTM" ~
+    * : open ~                                                  # file browser
+]
+ctrl + alt - t [
+    "UTM" ~
+    * : open -a ghostty                                         # terminal
+]
+ctrl + alt - w [
+    "UTM" ~
+    * : open -a 'Google Chrome'                                 # web browser
+]
+
