@@ -1,0 +1,70 @@
+" commands: https://jb.gg/h38q75
+" actions: https://jb.gg/abva4t
+" plugin: https://jb.gg/ideavim-plugins
+" ideavimrc examples: https://jb.gg/share-ideavimrc
+
+Plug 'tpope/vim-commentary'
+Plug 'machakann/vim-highlightedyank'
+
+set clipboard+=unnamedplus
+set scrolloff=5
+set timeoutlen=300
+
+set ideajoin
+set incsearch
+set number relativenumber
+"set trackactionids
+
+let mapleader = " "
+
+" code
+nmap <leader>= <Action>(OptimizeImports)<Action>(ReformatCode)<CR>
+map <C-x><C-o> :action Generate<CR>
+map <leader>ge :action GotoNextError<CR>
+nmap <S-k> :action QuickJavaDoc<CR>
+imap <C-S-k> :action QuickJavaDoc<CR>
+
+" find/replace
+nmap <leader>f :action Find<CR>
+nmap <leader>fa :action FindInPath<CR>
+nmap <leader>ff :action GotoFile<CR>
+nmap <leader>r :action Replace<CR>
+nmap <leader>ra :action ReplaceInPath<CR>
+
+" git
+nmap <leader>g :action ActivateVersionControlToolWindow<CR>
+nmap <leader>gc :action CheckinProject<CR>
+nmap <leader>gl :action Vcs.Show.Log<CR>
+
+" nav
+nmap <leader>e :action SelectInProjectView<CR>
+nmap <leader>mb :action MoveEditorToOppositeTabGroup<CR>
+nmap <leader>vb :action MoveTabRight<CR>
+nmap <C-o> <Action>(Back)
+nmap <C-i> <Action>(Forward)
+nmap <C-h> :action PrevSplitter<CR>
+nmap <C-j> :action PreviousTab<CR> 
+nmap <C-k> :action NextTab<CR>
+nmap <leader><TAB> :action NextTab<CR>
+nmap <C-l> :action NextSplitter<CR>
+nmap <C-S-,> :tabmove -1<CR>
+nmap <C-S-.> :tabmove +1<CR>
+nmap <C-d> <C-d>zz<CR>
+nmap <C-u> <C-u>zz<CR>
+
+" put w/o changing register with deleted content
+nmap <leader>p \"_dP<CR>
+
+" quit
+nmap <leader>q <Action>(CloseContent)
+nmap <C-w> <Action>(CloseContent)
+nmap <leader>qa <Action>(CloseAllEditors)<CR>
+nmap <leader>qh <Action>(HideAllWindows)<CR>
+nmap <leader>qo <Action>(CloseAllEditorsButActive)<CR>
+
+" source .ideavimrc
+nmap <leader>si :so ~/.ideavimrc<CR>
+
+" terminal
+nmap <leader>t :action ActivateTerminalToolWindow<CR>
+

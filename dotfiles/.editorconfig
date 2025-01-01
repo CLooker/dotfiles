@@ -1,0 +1,14 @@
+# neovim respects this
+
+root = true
+
+[*]
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+max_line_length = 120
+
+[*.{lua,nix}]
+indent_size = 2
+
