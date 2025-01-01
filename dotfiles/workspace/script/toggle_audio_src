@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+trap exit ERR
+
+export PATH=/run/current-system/sw/bin:$PATH
+
+usage() {
+cat << EOF
+Toggle audio source between my speakers and my headphones
+
+Usage: toggle_audio_src [option...]
+
+Options:
+    -h, --help:     show this message and exit
+
+EOF
+}
+
+check_args() {
+    eval set -- "$(getopt -o -h --long help -- "$@")"
+
+    while true; do
+        case ${1-} in
+            -h|--help)
+                usage
+                exit
+                ;;
+            --) 
+                shift; 
+                break 
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+}
+
+run() {
+    local headphones_name="External Headphones"
+    local speaker_name="Mac mini Speakers"
+
+    local activated_name
+    activated_name=$(SwitchAudioSource -c)
+
+    if [[ "$activated_name" == "$headphones_name" ]]; then
+        SwitchAudioSource -s "$speaker_name" 
+    else 
+        SwitchAudioSource -s "$headphones_name" 
+    fi
+}
+
+main() {
+    check_args "$@"
+    run 2>&1 | sed "s/^/$(basename "$0"): /"
+}
+
+main "$@"
+
